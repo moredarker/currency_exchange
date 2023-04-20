@@ -1,7 +1,7 @@
 package org.moredarker.services;
 
 import com.google.gson.annotations.Expose;
-import org.moredarker.dao.CurrenciesDAOImpl;
+import org.moredarker.repository.CurrencyRepository;
 import org.moredarker.entity.Currency;
 import org.moredarker.entity.ExchangeRate;
 import org.moredarker.services.exclusion.Hidden;
@@ -22,12 +22,21 @@ public class FullExchangeService {
     @Hidden
     private double converted;
 
-    public FullExchangeService(ExchangeRate exchangeRate) {
-        CurrenciesDAOImpl currenciesDAO = new CurrenciesDAOImpl();
+    @Expose
+    @Hidden
+    private CurrencyRepository currencyRepository = new CurrencyRepository();
 
+    public FullExchangeService(String baseCurrencyCode, String targetCurrencyCode) {
+        this.baseCurrency = currencyRepository.getByCode(baseCurrencyCode);
+        if (baseCurrency != null) {
+            this.targetCurrency = currencyRepository.getByCode(targetCurrencyCode);
+        }
+    }
+
+    public FullExchangeService(ExchangeRate exchangeRate) {
         this.id = exchangeRate.getId();
-        this.baseCurrency = currenciesDAO.getById(exchangeRate.getBaseCurrencyId());
-        this.targetCurrency = currenciesDAO.getById(exchangeRate.getTargetCurrencyid());
+        this.baseCurrency = currencyRepository.getById(exchangeRate.getBaseCurrencyId());
+        this.targetCurrency = currencyRepository.getById(exchangeRate.getTargetCurrencyid());
         this.rate = exchangeRate.getRate();
     }
 
@@ -98,8 +107,37 @@ public class FullExchangeService {
         return this;
     }
 
+    public ExchangeRate getExchangeRate() {
+        ExchangeRate exchangeRate = new ExchangeRate();
+        if (baseCurrency != null && targetCurrency != null) {
+            exchangeRate.setBaseCurrencyId(baseCurrency.getId());
+            exchangeRate.setTargetCurrencyid(targetCurrency.getId());
+
+            if (id != 0) {
+                exchangeRate.setId(id);
+                exchangeRate.setRate(rate);
+            }
+
+            return exchangeRate;
+        }
+
+        return null;
+    }
+
     public void exchangeCurrencies() {
         converted = rate * amount;
+    }
+
+    @Override
+    public String toString() {
+        return "FullExchangeService{" +
+                "id=" + id +
+                ", baseCurrency=" + baseCurrency +
+                ", targetCurrency=" + targetCurrency +
+                ", rate=" + rate +
+                ", amount=" + amount +
+                ", converted=" + converted +
+                '}';
     }
 }
 

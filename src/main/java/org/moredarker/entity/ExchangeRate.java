@@ -9,7 +9,6 @@ public class ExchangeRate {
 
     private double rate;
 
-
     public ExchangeRate() {
     }
 

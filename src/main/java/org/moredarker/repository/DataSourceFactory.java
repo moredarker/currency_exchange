@@ -1,4 +1,4 @@
-package org.moredarker.dao;
+package org.moredarker.repository;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
 

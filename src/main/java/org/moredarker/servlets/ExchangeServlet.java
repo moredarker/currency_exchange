@@ -4,7 +4,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.moredarker.dao.ExchangeRateDAOImpl;
+import org.moredarker.repository.ExchangeRateRepository;
 import org.moredarker.entity.ExchangeRate;
 import org.moredarker.services.FullExchangeService;
 import org.moredarker.services.JsonResponse;
@@ -13,19 +13,21 @@ import java.io.IOException;
 
 @WebServlet(value = "/exchange")
 public class ExchangeServlet extends HttpServlet {
-    private final ExchangeRateDAOImpl exchangeRateDAO = new ExchangeRateDAOImpl();
+    private final ExchangeRateRepository exchangeRateRepository = new ExchangeRateRepository();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        String baseCurrencyCode = request.getParameter("from");
-        String targetCurrencyCode = request.getParameter("to");
+        String baseCurrencyCode = request.getParameter("from").toUpperCase();
+        String targetCurrencyCode = request.getParameter("to").toUpperCase();
         double amount = Double.parseDouble(request.getParameter("amount"));
 
-        ExchangeRate exchangeRate = exchangeRateDAO.findByCode(baseCurrencyCode, targetCurrencyCode);
+        ExchangeRate exchangeRate = exchangeRateRepository.getByCodes(baseCurrencyCode, targetCurrencyCode);
 
         if (exchangeRate == null) {
-            ExchangeRate exchangeRateFrom = exchangeRateDAO.findByCode("USD", baseCurrencyCode);
-            ExchangeRate exchangeRateTo = exchangeRateDAO.findByCode("USD", targetCurrencyCode);
+            //cny -> usd
+            ExchangeRate exchangeRateFrom = exchangeRateRepository.getByCodes("USD", baseCurrencyCode);
+            //usd -> rub
+            ExchangeRate exchangeRateTo = exchangeRateRepository.getByCodes("USD", targetCurrencyCode);
 
             if (exchangeRateFrom == null || exchangeRateTo == null) {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND, "такого обменного курса в базе нет");
@@ -36,9 +38,13 @@ public class ExchangeServlet extends HttpServlet {
                 FullExchangeService fullExchangeServiceTo = new FullExchangeService(exchangeRateTo)
                         .getFullExchangeService("USD");
 
-                double rate = fullExchangeServiceFrom.getRate() / fullExchangeServiceTo.getRate();
-                exchangeRateDAO.save(targetCurrencyCode, baseCurrencyCode, rate);
-                exchangeRate = exchangeRateDAO.findByCode(baseCurrencyCode, targetCurrencyCode);
+                double rate = fullExchangeServiceTo.getRate() / fullExchangeServiceFrom.getRate();
+
+                exchangeRate = new FullExchangeService(baseCurrencyCode, targetCurrencyCode).getExchangeRate();
+                exchangeRate.setRate(rate);
+                exchangeRateRepository.save(exchangeRate);
+
+                exchangeRate = exchangeRateRepository.getByCodes(baseCurrencyCode, targetCurrencyCode);
             }
         }
 
